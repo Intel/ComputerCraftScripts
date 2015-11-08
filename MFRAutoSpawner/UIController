@@ -1,0 +1,83 @@
+rednetProt = "spawner1"
+mon = peripheral.wrap('right')
+rednet.open('left')
+
+mobs = {}
+
+function draw()
+  mon.clear()
+  mon.setTextScale(1)
+  mon.setCursorPos(1,1)
+  mon.setTextColor(colors.orange)
+  mon.write("Select mob:")
+  i = 0
+  for k,v in pairs(mobs) do
+    x = math.floor(i/4)*12+1
+    y = i%4+2
+    mon.setCursorPos(x, y)
+    if v.active == true then
+      mon.setTextColor(colors.green)
+    else
+      mon.setTextColor(colors.white)
+    end
+    mon.write(v.name)
+    v.x = x
+    v.y = y
+    i = i+1
+  end
+end
+
+function updateMobs(data)
+  mobs = {}
+  for k,v in pairs(data) do
+    mob = {}
+    mob.name = v.safari_net.captured
+    mob.active = false
+    table.insert(mobs, mob)
+  end
+  draw()
+end
+
+function monitorClick(x, y)
+  for k,v in pairs(mobs) do
+    if v.y == y and v.x <= x and v.x+12 > x then
+      msg = {}
+      if v.active == true then
+        v.active = false
+        msg.op = "stop"
+        rednet.broadcast(msg, rednetProt)
+      else
+        v.active = true
+        msg.op = "start"
+        msg.name = v.name
+        rednet.broadcast(msg, rednetProt)
+      end
+    else
+      v.active = false
+    end
+  end
+  draw()
+end
+
+function requestList()
+  msg = {}
+  msg.op = "getList"
+  rednet.broadcast(msg, rednetProt)
+end
+
+draw()
+requestList()
+
+while true do
+  event, p1, p2, p3 = os.pullEvent()
+  print(event)
+  if event == "rednet_message" and p3 == rednetProt then
+    msg = p2
+    if msg.op == "list" then
+      updateMobs(msg.data)
+    end
+  end
+  if event == "monitor_touch" then
+    monitorClick(p2, p3)
+  end
+end

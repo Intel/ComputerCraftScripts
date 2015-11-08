@@ -1,0 +1,63 @@
+chestDir = "top"
+modemDir = "bottom"
+spawnerDir = "west"
+rednetProt = "spawner1"
+
+inv = peripheral.wrap(chestDir)
+rednet.open(modemDir)
+
+function stop()
+  inv.pullItem(spawnerDir, 1)
+end
+
+function sendList()
+  stop()
+  items = inv.getAllStacks()
+  mobs = {}
+  for k, item in pairs(items) do
+    print(k)
+    data = item.all()
+    if data.name ~= 'safarinet.reusable' then
+      print('Unknown item in chest: ' .. data.name)
+    else
+      table.insert(mobs, data)
+    end
+  end
+
+  msg = {}
+  msg.op = "list"
+  msg.data = mobs
+  rednet.broadcast(msg, rednetProt)
+end
+
+function start(name)
+  stop()
+  items = inv.getAllStacks()  
+  for k,v in pairs(items) do
+    data = v.all()
+    if data.name == "safarinet.reusable" then
+      if data.safari_net.captured == name then
+        inv.pushItem(spawnerDir, k)
+        break
+      end
+    end
+  end
+end
+
+sendList()
+
+while true do
+  event, p1, p2, p3 = os.pullEvent()
+  if event == "rednet_message" and p3 == rednetProt then
+    msg = p2
+    if msg.op == "getList" then
+      sendList()
+    end
+    if msg.op == "stop" then
+      stop()
+    end
+    if msg.op == "start" then
+      start(msg.name)
+    end
+  end
+end
